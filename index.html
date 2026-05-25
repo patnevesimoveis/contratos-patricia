@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patrícia Neves — Gerador de Contratos</title>
+<style>
+  /* ─── RESET & BASE ─── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --azul:      #1B3A5C;
+    --azul-med:  #2E6DA4;
+    --azul-lt:   #eff6ff;
+    --cinza-bg:  #F2F4F7;
+    --cinza-brd: #CBD5E1;
+    --cinza-lt:  #F8FAFC;
+    --texto:     #1A202C;
+    --texto-sec: #475569;
+    --texto-ter: #94A3B8;
+    --verde:     #16a34a;
+    --erro:      #b91c1c;
+    --erro-bg:   #fef2f2;
+    --info-bg:   #eff6ff;
+    --info-brd:  #bfdbfe;
+    --info-txt:  #1d4ed8;
+    --radius:    10px;
+    --shadow:    0 4px 24px rgba(27,58,92,.10);
+  }
+  html { height: 100%; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #f0f4f8 0%, #e8f0f7 100%);
+    min-height: 100vh;
+    color: var(--texto);
+    font-size: 14px;
+  }
+
+  /* ─── TELAS ─── */
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ─── LOGIN ─── */
+  #screen-login {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .login-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 48px 40px;
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+  }
+  .login-logo { font-size: 48px; margin-bottom: 16px; }
+  .login-title { font-size: 22px; font-weight: 700; color: var(--azul); margin-bottom: 4px; }
+  .login-sub { font-size: 13px; color: var(--texto-sec); margin-bottom: 32px; }
+  .login-label { display: block; text-align: left; font-size: 11px; font-weight: 600; color: var(--texto-sec); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .login-input { width: 100%; padding: 12px 14px; border: 1.5px solid var(--cinza-brd); border-radius: var(--radius); font-size: 15px; margin-bottom: 20px; outline: none; transition: border-color .2s; }
+  .login-input:focus { border-color: var(--azul-med); }
+  .login-btn { width: 100%; background: var(--azul); color: #fff; border: none; border-radius: var(--radius); padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; letter-spacing: .3px; transition: background .2s; }
+  .login-btn:hover { background: var(--azul-med); }
+  .login-err { background: var(--erro-bg); color: var(--erro); border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: -8px; margin-bottom: 16px; text-align: left; display: none; }
+
+  /* ─── HEADER ─── */
+  .app-header {
+    background: var(--azul);
+    padding: 0;
+    border-bottom: 4px solid var(--azul-med);
+    flex-shrink: 0;
+  }
+  .app-header-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .header-logo-icon { font-size: 28px; }
+  .header-title { color: #fff; font-size: 17px; font-weight: 700; }
+  .header-sub { color: #AACDE8; font-size: 12px; margin-top: 1px; }
+  .header-spacer { flex: 1; }
+  .header-nav { display: flex; gap: 8px; }
+  .nav-btn {
+    background: transparent;
+    color: #AACDE8;
+    border: 1.5px solid rgba(255,255,255,.2);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.4); }
+  .nav-btn-logout { color: #FDA4AF; border-color: rgba(253,164,175,.3); }
+  .nav-btn-logout:hover { background: rgba(253,164,175,.1); color: #fff; }
+
+  /* ─── MAIN CONTENT ─── */
+  .app-content { flex: 1; max-width: 960px; margin: 0 auto; width: 100%; padding: 28px 20px 60px; }
+
+  /* ─── CARD ─── */
+  .card { background: #fff; border-radius: 16px; box-shadow: var(--shadow); padding: 32px 36px; }
+  @media (max-width: 600px) { .card { padding: 22px 18px; } }
+
+  /* ─── PROGRESS ─── */
+  .progress { display: flex; margin-bottom: 28px; }
+  .pstep { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; cursor: default; }
+  .pstep.clickable { cursor: pointer; }
+  .pdot {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; position: relative; z-index: 1;
+    transition: all .2s; border: 2px solid transparent;
+  }
+  .pdot.done { background: var(--azul-med); color: #fff; }
+  .pdot.active { background: var(--azul); color: #fff; transform: scale(1.1); }
+  .pdot.todo { background: #e2e8f0; color: var(--texto-ter); }
+  .plabel { font-size: 10px; margin-top: 5px; text-align: center; color: var(--texto-ter); font-weight: 500; }
+  .plabel.active { color: var(--azul); font-weight: 700; }
+  .plabel.done { color: var(--azul-med); }
+  .pline { position: absolute; top: 18px; left: calc(50% + 18px); width: calc(100% - 36px); height: 2px; z-index: 0; }
+  .pline.done { background: var(--azul-med); }
+  .pline.todo { background: #e2e8f0; }
+
+  /* ─── FORM ELEMENTS ─── */
+  .step-title { font-size: 20px; font-weight: 700; color: var(--azul); margin-bottom: 4px; }
+  .step-desc { font-size: 13px; color: var(--texto-sec); margin-bottom: 22px; }
+  .form-grid { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 6px; }
+  .field { display: flex; flex-direction: column; gap: 5px; flex: 1 1 calc(50% - 7px); min-width: 150px; }
+  .field.full { flex: 1 1 100%; }
+  .lbl { font-size: 11px; font-weight: 600; color: var(--texto-sec); text-transform: uppercase; letter-spacing: .5px; }
+  .sec-lbl { font-size: 12px; font-weight: 700; color: var(--azul-med); margin: 18px 0 10px; padding-bottom: 6px; border-bottom: 1.5px solid #e2e8f0; text-transform: uppercase; letter-spacing: .6px; }
+  input[type=text], input[type=number], input[type=email], select {
+    width: 100%; padding: 10px 12px;
+    border: 1.5px solid var(--cinza-brd);
+    border-radius: 8px; font-size: 14px;
+    color: var(--texto); background: var(--cinza-lt);
+    font-family: inherit; outline: none;
+    transition: border-color .2s;
+  }
+  input:focus, select:focus { border-color: var(--azul-med); background: #fff; }
+  .extenso { font-size: 11px; color: var(--azul-med); font-style: italic; margin-top: 3px; min-height: 15px; }
+  .info-box { background: var(--info-bg); border: 1px solid var(--info-brd); color: var(--info-txt); border-radius: 8px; padding: 9px 14px; font-size: 13px; margin-top: 8px; }
+  .err-box { background: var(--erro-bg); border: 1px solid #fca5a5; color: var(--erro); border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: 12px; display: none; }
+
+  /* ─── TIPO CARDS ─── */
+  .tipo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 500px) { .tipo-grid { grid-template-columns: 1fr; } }
+  .tipo-card {
+    border: 2px solid #e2e8f0; border-radius: 12px; padding: 18px;
+    cursor: pointer; transition: all .15s; text-align: center;
+  }
+  .tipo-card:hover { border-color: var(--azul-med); background: var(--azul-lt); }
+  .tipo-card.sel { border-color: var(--azul-med); background: var(--azul-lt); box-shadow: 0 0 0 4px rgba(46,109,164,.1); }
+  .tipo-icon { font-size: 26px; margin-bottom: 8px; }
+  .tipo-label { font-size: 14px; font-weight: 700; color: var(--azul); margin-bottom: 3px; }
+  .tipo-desc { font-size: 12px; color: var(--texto-sec); }
+
+  /* ─── REVIEW ─── */
+  .review-box { background: var(--cinza-bg); border-radius: 10px; padding: 14px 18px; }
+  .review-row { display: flex; gap: 14px; padding: 6px 0; border-bottom: 1px solid #e8ecf0; }
+  .review-row:last-child { border-bottom: none; }
+  .rk { font-weight: 600; font-size: 12px; color: var(--texto-sec); min-width: 130px; flex-shrink: 0; }
+  .rv { font-size: 13px; color: var(--azul); flex: 1; }
+  .rv.na { color: var(--texto-ter); font-style: italic; }
+  .review-div { height: 1px; background: #dde1e7; margin: 4px 0; }
+
+  /* ─── NAV BUTTONS ─── */
+  .step-nav { display: flex; align-items: center; gap: 12px; margin-top: 24px; }
+  .btn-back { background: #fff; color: var(--azul); border: 2px solid var(--azul-med); border-radius: var(--radius); padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s; }
+  .btn-back:hover { background: var(--azul-lt); }
+  .btn-next { background: var(--azul); color: #fff; border: none; border-radius: var(--radius); padding: 10px 22px; font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s, background .15s; }
+  .btn-next:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-next:not(:disabled):hover { background: var(--azul-med); }
+  .btn-gen { background: var(--azul); color: #fff; border: none; border-radius: var(--radius); padding: 10px 26px; font-size: 14px; font-weight: 700; cursor: pointer; min-width: 200px; transition: background .2s; }
+  .btn-gen:hover:not(:disabled) { background: var(--azul-med); }
+  .btn-gen:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-gen.ok { background: var(--verde); }
+  .spacer { flex: 1; }
+
+  /* ─── HISTÓRICO ─── */
+  .hist-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+  .hist-title { font-size: 20px; font-weight: 700; color: var(--azul); }
+  .btn-sm { background: #fff; color: var(--azul); border: 1.5px solid var(--azul-med); border-radius: 8px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s; }
+  .btn-sm:hover { background: var(--azul-lt); }
+  .btn-sm.danger { color: var(--erro); border-color: #fca5a5; }
+  .btn-sm.danger:hover { background: var(--erro-bg); }
+  .hist-empty { text-align: center; padding: 60px 20px; color: var(--texto-ter); font-size: 15px; }
+  .hist-empty span { font-size: 48px; display: block; margin-bottom: 12px; }
+  .hist-grid { display: grid; gap: 14px; }
+  .hist-item {
+    background: #fff; border-radius: 12px; border: 1.5px solid #e2e8f0;
+    padding: 18px 20px; display: flex; align-items: flex-start; gap: 16px;
+    transition: border-color .15s; cursor: default;
+  }
+  .hist-item:hover { border-color: var(--azul-med); }
+  .hist-badge {
+    background: var(--azul); color: #fff; border-radius: 8px;
+    padding: 6px 10px; font-size: 11px; font-weight: 700;
+    white-space: nowrap; flex-shrink: 0; text-align: center; min-width: 50px;
+  }
+  .hist-info { flex: 1; }
+  .hist-num { font-size: 15px; font-weight: 700; color: var(--azul); margin-bottom: 3px; }
+  .hist-nome { font-size: 13px; color: var(--texto-sec); margin-bottom: 2px; }
+  .hist-meta { font-size: 12px; color: var(--texto-ter); }
+  .hist-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+  .hist-btn { background: var(--azul-lt); color: var(--azul-med); border: none; border-radius: 7px; padding: 7px 12px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .15s; }
+  .hist-btn:hover { background: #dbeafe; }
+  .hist-btn.del { background: var(--erro-bg); color: var(--erro); }
+  .hist-btn.del:hover { background: #fee2e2; }
+
+  /* ─── CONFIG API KEY ─── */
+  .api-notice {
+    background: #fffbeb; border: 1.5px solid #fbbf24; border-radius: 10px;
+    padding: 14px 18px; margin-bottom: 20px; font-size: 13px; color: #92400e;
+    display: none;
+  }
+  .api-notice strong { color: #78350f; }
+  .api-key-row { display: flex; gap: 10px; align-items: flex-end; }
+  .api-key-row input { flex: 1; }
+
+  /* ─── SPINNER ─── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     TELA: LOGIN
+════════════════════════════════════════════════════════ -->
+<div id="screen-login" class="screen active">
+  <div class="login-card">
+    <div class="login-logo">⚖️</div>
+    <div class="login-title">Patrícia Neves Imóveis</div>
+    <div class="login-sub">Gerador de Contratos de Locação · CRECI 3533</div>
+    <label class="login-label" for="inp-senha">Senha de acesso</label>
+    <div id="login-err" class="login-err">Senha incorreta. Tente novamente.</div>
+    <input id="inp-senha" class="login-input" type="password" placeholder="Digite a senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">Entrar →</button>
+    <p style="margin-top:20px;font-size:11px;color:#94a3b8">Acesso protegido por senha local</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     TELA: APLICAÇÃO
+════════════════════════════════════════════════════════ -->
+<div id="screen-app" class="screen">
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="app-header-inner">
+      <span class="header-logo-icon">⚖️</span>
+      <div>
+        <div class="header-title">Patrícia Neves Negócios Imobiliários</div>
+        <div class="header-sub">Gerador de Contratos · CRECI 3533</div>
+      </div>
+      <div class="header-spacer"></div>
+      <nav class="header-nav">
+        <button class="nav-btn active" id="btn-nav-gerador" onclick="showTab('gerador')">📄 Novo Contrato</button>
+        <button class="nav-btn" id="btn-nav-historico" onclick="showTab('historico')">🗂 Histórico</button>
+        <button class="nav-btn" id="btn-nav-config" onclick="showTab('config')">⚙️ Config.</button>
+        <button class="nav-btn nav-btn-logout" onclick="doLogout()">Sair</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ── ABA: GERADOR ── -->
+  <div id="tab-gerador" class="app-content">
+
+    <!-- Notificação sem API key -->
+    <div id="api-notice" class="api-notice">
+      <strong>⚠️ Chave de API não configurada.</strong>
+      Acesse <strong>Configurações</strong> e informe sua chave da Anthropic para gerar contratos.
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress" id="progress-bar"></div>
+
+    <!-- Card do passo -->
+    <div class="card" id="step-card"></div>
+
+    <!-- Erro -->
+    <div id="gen-err" class="err-box"></div>
+  </div>
+
+  <!-- ── ABA: HISTÓRICO ── -->
+  <div id="tab-historico" class="app-content" style="display:none">
+    <div class="card">
+      <div class="hist-header">
+        <div class="hist-title">🗂 Histórico de Contratos</div>
+        <button class="btn-sm danger" onclick="limparHistorico()">🗑 Limpar tudo</button>
+      </div>
+      <div id="hist-lista"></div>
+    </div>
+  </div>
+
+  <!-- ── ABA: CONFIGURAÇÕES ── -->
+  <div id="tab-config" class="app-content" style="display:none">
+    <div class="card">
+      <div class="step-title">⚙️ Configurações</div>
+      <div class="step-desc">Gerencie a chave de API e a senha de acesso</div>
+
+      <div class="sec-lbl">Chave de API Anthropic</div>
+      <p style="font-size:13px;color:#475569;margin-bottom:12px">
+        Necessária para gerar os contratos. Obtenha em
+        <a href="https://console.anthropic.com" target="_blank" style="color:#2E6DA4">console.anthropic.com</a>.
+        A chave é salva apenas no seu navegador (localStorage).
+      </p>
+      <div class="api-key-row">
+        <div class="field" style="flex:1">
+          <div class="lbl">API Key</div>
+          <input type="password" id="inp-apikey" placeholder="sk-ant-..." autocomplete="off">
+        </div>
+        <button class="btn-sm" style="height:40px;flex-shrink:0" onclick="salvarApiKey()">Salvar</button>
+      </div>
+      <div id="apikey-msg" style="font-size:13px;margin-top:8px;color:var(--verde);display:none">✓ Chave salva com sucesso!</div>
+
+      <div class="sec-lbl" style="margin-top:28px">Senha de acesso</div>
+      <p style="font-size:13px;color:#475569;margin-bottom:12px">
+        Altere a senha de acesso ao sistema. A senha fica armazenada no navegador.
+      </p>
+      <div class="form-grid">
+        <div class="field">
+          <div class="lbl">Nova senha</div>
+          <input type="password" id="inp-nova-senha" placeholder="Nova senha">
+        </div>
+        <div class="field">
+          <div class="lbl">Confirmar senha</div>
+          <input type="password" id="inp-conf-senha" placeholder="Confirmar nova senha">
+        </div>
+      </div>
+      <div id="senha-msg" style="font-size:13px;margin-top:8px;display:none"></div>
+      <div style="margin-top:12px">
+        <button class="btn-sm" onclick="salvarSenha()">Alterar senha</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /screen-app -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CONFIGURAÇÃO
+// ═══════════════════════════════════════════════════════════════
+// Altere SENHA_PADRAO para a senha inicial desejada
+const SENHA_PADRAO = 'patricia2025';
+
+// ═══════════════════════════════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════════════════════════════
+function getSenha(){ return localStorage.getItem('pn_senha') || SENHA_PADRAO; }
+function getApiKey(){ return localStorage.getItem('pn_apikey') || ''; }
+
+function doLogin(){
+  const v = document.getElementById('inp-senha').value;
+  const err = document.getElementById('login-err');
+  if(v === getSenha()){
+    err.style.display='none';
+    sessionStorage.setItem('pn_auth','1');
+    document.getElementById('screen-login').classList.remove('active');
+    document.getElementById('screen-app').classList.add('active');
+    initApp();
+  } else {
+    err.style.display='block';
+    document.getElementById('inp-senha').value='';
+  }
+}
+
+function doLogout(){
+  sessionStorage.removeItem('pn_auth');
+  document.getElementById('screen-app').classList.remove('active');
+  document.getElementById('screen-login').classList.add('active');
+  document.getElementById('inp-senha').value='';
+}
+
+function checkAuth(){
+  if(sessionStorage.getItem('pn_auth')==='1'){
+    document.getElementById('screen-login').classList.remove('active');
+    document.getElementById('screen-app').classList.add('active');
+    initApp();
+  }
+}
+
+function salvarApiKey(){
+  const v = document.getElementById('inp-apikey').value.trim();
+  if(!v){ alert('Informe a chave de API.'); return; }
+  localStorage.setItem('pn_apikey', v);
+  const msg=document.getElementById('apikey-msg');
+  msg.style.display='block';
+  setTimeout(()=>msg.style.display='none', 2500);
+  document.getElementById('inp-apikey').value='';
+  checkApiNotice();
+}
+
+function salvarSenha(){
+  const n=document.getElementById('inp-nova-senha').value;
+  const c=document.getElementById('inp-conf-senha').value;
+  const msg=document.getElementById('senha-msg');
+  if(!n){ msg.style.display='block'; msg.style.color='var(--erro)'; msg.textContent='Informe a nova senha.'; return; }
+  if(n!==c){ msg.style.display='block'; msg.style.color='var(--erro)'; msg.textContent='As senhas não coincidem.'; return; }
+  localStorage.setItem('pn_senha', n);
+  msg.style.display='block'; msg.style.color='var(--verde)'; msg.textContent='✓ Senha alterada com sucesso!';
+  document.getElementById('inp-nova-senha').value='';
+  document.getElementById('inp-conf-senha').value='';
+  setTimeout(()=>msg.style.display='none', 2500);
+}
+
+function checkApiNotice(){
+  const el=document.getElementById('api-notice');
+  if(el) el.style.display = getApiKey() ? 'none' : 'block';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════════════
+function showTab(tab){
+  ['gerador','historico','config'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display = t===tab ? '' : 'none';
+    const b=document.getElementById('btn-nav-'+t);
+    if(b) b.classList.toggle('active', t===tab);
+  });
+  if(tab==='historico') renderHistorico();
+  if(tab==='config'){
+    const k=getApiKey();
+    document.getElementById('inp-apikey').placeholder = k ? '(chave já salva — cole aqui para alterar)' : 'sk-ant-...';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  HISTÓRICO
+// ═══════════════════════════════════════════════════════════════
+function getHistorico(){ try{ return JSON.parse(localStorage.getItem('pn_historico')||'[]'); }catch(e){ return []; } }
+function saveHistorico(h){ localStorage.setItem('pn_historico', JSON.stringify(h)); }
+
+function addHistorico(entry){
+  const h=getHistorico();
+  h.unshift({ ...entry, id: Date.now(), geradoEm: new Date().toLocaleString('pt-BR') });
+  if(h.length>100) h.pop();
+  saveHistorico(h);
+}
+
+function limparHistorico(){
+  if(!confirm('Tem certeza que deseja apagar todo o histórico?')) return;
+  localStorage.removeItem('pn_historico');
+  renderHistorico();
+}
+
+function baixarNovamente(id){
+  const h=getHistorico();
+  const entry=h.find(e=>e.id===id);
+  if(!entry||!entry.b64){ alert('Dados do contrato não encontrados.'); return; }
+  const bytes=atob(entry.b64);
+  const arr=new Uint8Array(bytes.length);
+  for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
+  const blob=new Blob([arr],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=entry.filename||'contrato.docx';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function excluirContrato(id){
+  if(!confirm('Excluir este contrato do histórico?')) return;
+  const h=getHistorico().filter(e=>e.id!==id);
+  saveHistorico(h);
+  renderHistorico();
+}
+
+function renderHistorico(){
+  const h=getHistorico();
+  const el=document.getElementById('hist-lista');
+  if(!h.length){
+    el.innerHTML=`<div class="hist-empty"><span>📂</span>Nenhum contrato gerado ainda.<br>Gere seu primeiro contrato na aba <strong>Novo Contrato</strong>.</div>`;
+    return;
+  }
+  const TIPO_LABELS={'1loc_com':'1 Loc. + Fiador','1loc_sem':'1 Loc. s/ Fiador','2loc_com':'2 Loc. + Fiador','2loc_sem':'2 Loc. s/ Fiador'};
+  el.innerHTML=`<div class="hist-grid">${h.map(e=>`
+    <div class="hist-item">
+      <div class="hist-badge">${TIPO_LABELS[e.tipo]||'Contrato'}</div>
+      <div class="hist-info">
+        <div class="hist-num">Nº ${e.numero||'—'}</div>
+        <div class="hist-nome">Locatário: ${e.nomeLocatario||'—'}</div>
+        <div class="hist-meta">Imóvel: ${e.endereco||'—'} · Aluguel: R$ ${e.valor||'—'} · Gerado em: ${e.geradoEm}</div>
+      </div>
+      <div class="hist-actions">
+        <button class="hist-btn" onclick="baixarNovamente(${e.id})">⬇ Baixar</button>
+        <button class="hist-btn del" onclick="excluirContrato(${e.id})">✕ Excluir</button>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GERADOR — ESTADO
+// ═══════════════════════════════════════════════════════════════
+const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const STEPS_DEF=[
+  {id:'tipo',    label:'Tipo'},
+  {id:'contrato',label:'Contrato'},
+  {id:'locador', label:'Locador'},
+  {id:'locatario',label:'Locatário'},
+  {id:'imovel',  label:'Imóvel'},
+  {id:'financeiro',label:'Financeiro'},
+  {id:'revisar', label:'Revisar'},
+];
+
+let step=0, genDone=false;
+const F={
+  tipo:'1loc_com',
+  numero:'',cidade:'Ananindeua',diaA:'',mesA:'',anoA:'',
+  nL:'',natL:'',ecL:'',profL:'',rgL:'',cpfL:'',
+  nT1:'',natT1:'',ecT1:'',profT1:'',rgT1:'',cpfT1:'',
+  nT2:'',natT2:'',ecT2:'',profT2:'',rgT2:'',cpfT2:'',
+  nF:'',natF:'',profF:'',rgF:'',cpfF:'',emailF:'',
+  tipoImovel:'RESIDENCIAL',endI:'',bairroI:'',cidI:'Ananindeua',estI:'PA',
+  valor:'',desconto:'',diaVenc:'',prazo:'12',
+  diaIni:'',mesIni:'',anoIni:'',diaFim:'',mesFim:'',anoFim:'',
+};
+
+const hF=()=>F.tipo.includes('com');
+const h2=()=>F.tipo.includes('2loc');
+
+// ═══════════════════════════════════════════════════════════════
+//  EXTENSO
+// ═══════════════════════════════════════════════════════════════
+function valorExtenso(v){
+  if(!v)return'';
+  const n=parseFloat(v.replace(',','.'));
+  if(isNaN(n))return'';
+  const un=['','UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ','ONZE','DOZE','TREZE','QUATORZE','QUINZE','DEZESSEIS','DEZESSETE','DEZOITO','DEZENOVE'];
+  const dz=['','','VINTE','TRINTA','QUARENTA','CINQUENTA','SESSENTA','SETENTA','OITENTA','NOVENTA'];
+  const ct=['','CENTO','DUZENTOS','TREZENTOS','QUATROCENTOS','QUINHENTOS','SEISCENTOS','SETECENTOS','OITOCENTOS','NOVECENTOS'];
+  const int=Math.floor(n), cents=Math.round((n-int)*100);
+  function g(x){if(!x)return'';if(x<20)return un[x];if(x<100)return dz[Math.floor(x/10)]+(x%10?' E '+un[x%10]:'');if(x===100)return'CEM';return ct[Math.floor(x/100)]+(x%100?' E '+g(x%100):'');}
+  let r=int===0?'ZERO':int<1000?g(int)+(int===1?' REAL':' REAIS'):(()=>{const m=Math.floor(int/1000),rest=int%1000;return(m===1?'MIL':g(m)+' MIL')+(rest?' E '+g(rest):'')+' REAIS'})();
+  if(cents>0)r+=' E '+g(cents)+(cents===1?' CENTAVO':' CENTAVOS');
+  return r;
+}
+function diaExt(d){const e=['','UM','DOIS','TRÊS','QUATRO','CINCO','SEIS','SETE','OITO','NOVE','DEZ','ONZE','DOZE','TREZE','QUATORZE','QUINZE','DEZESSEIS','DEZESSETE','DEZOITO','DEZENOVE','VINTE','VINTE E UM','VINTE E DOIS','VINTE E TRÊS','VINTE E QUATRO','VINTE E CINCO','VINTE E SEIS','VINTE E SETE','VINTE E OITO','VINTE E NOVE','TRINTA','TRINTA E UM'];return e[parseInt(d)]||d;}
+function prazoExt(p){return{6:'SEIS',12:'DOZE',18:'DEZOITO',24:'VINTE E QUATRO',30:'TRINTA',36:'TRINTA E SEIS'}[p]||p;}
+
+function calcFim(){
+  if(!F.diaIni||!F.mesIni||!F.anoIni||!F.prazo)return;
+  const mi=MESES.indexOf(F.mesIni);if(mi<0)return;
+  const d=new Date(parseInt(F.anoIni),mi,parseInt(F.diaIni));
+  d.setMonth(d.getMonth()+parseInt(F.prazo));
+  F.diaFim=String(d.getDate());F.mesFim=MESES[d.getMonth()];F.anoFim=String(d.getFullYear());
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════════
+function renderProgress(){
+  const el=document.getElementById('progress-bar');
+  el.innerHTML=STEPS_DEF.map((s,i)=>{
+    const cls=i<step?'done':i===step?'active':'todo';
+    const line=i<STEPS_DEF.length-1?`<div class="pline ${i<step?'done':'todo'}"></div>`:'';
+    const lbl=`<div class="plabel${i===step?' active':i<step?' done':''}">${s.label}</div>`;
+    const dot=`<div class="pdot ${cls}">${i<step?'✓':i+1}</div>`;
+    const click=i<step?`onclick="goStep(${i})" style="cursor:pointer"`:'';
+    return`<div class="pstep" ${click}>${line}${dot}${lbl}</div>`;
+  }).join('');
+}
+
+function goStep(n){ step=n; genDone=false; renderAll(); }
+
+function renderAll(){ renderProgress(); renderStep(); }
+
+// helpers
+function fld(key,lbl,ph,type='text',full=false){
+  const v=(F[key]||'').replace(/"/g,'&quot;');
+  const fullcls=full?' full':'';
+  return`<div class="field${fullcls}"><div class="lbl">${lbl}</div>
+    <input type="${type}" value="${v}" placeholder="${ph}"
+      oninput="F['${key}']=this.value;renderStep()"
+      onchange="F['${key}']=this.value;renderStep()">
+  </div>`;
+}
+function sel(key,opts,onChange=''){
+  const cur=F[key]||'';
+  const os=opts.map(o=>{const v=typeof o==='string'?o:o.v,l=typeof o==='string'?o:o.l;return`<option value="${v}"${cur===v?' selected':''}>${l}</option>`;}).join('');
+  return`<select onchange="F['${key}']=this.value;${onChange}renderStep()"><option value="">Selecione</option>${os}</select>`;
+}
+function secLbl(t){return`<div class="sec-lbl">${t}</div>`;}
+function rv(label,value){return`<div class="review-row"><span class="rk">${label}</span><span class="rv${value?'':' na'}">${value||'não informado'}</span></div>`;}
+
+function canNext(){
+  const s=STEPS_DEF[step].id;
+  if(s==='tipo')return!!F.tipo;
+  if(s==='contrato')return F.numero&&F.cidade&&F.diaA&&F.mesA&&F.anoA;
+  if(s==='locador')return F.nL&&F.rgL&&F.cpfL;
+  if(s==='locatario'){
+    const ok1=F.nT1&&F.rgT1&&F.cpfT1;
+    const ok2=!h2()||(F.nT2&&F.rgT2&&F.cpfT2);
+    const okF=!hF()||(F.nF&&F.cpfF);
+    return ok1&&ok2&&okF;
+  }
+  if(s==='imovel')return!!F.endI;
+  if(s==='financeiro')return F.valor&&F.diaVenc&&F.prazo&&F.diaIni&&F.mesIni&&F.anoIni;
+  return true;
+}
+
+function renderStep(){
+  renderProgress();
+  const s=STEPS_DEF[step].id;
+  const card=document.getElementById('step-card');
+  const navArea=`<div class="step-nav">
+    ${step>0?`<button class="btn-back" onclick="goStep(${step-1})">← Voltar</button>`:''}
+    <div class="spacer"></div>
+    ${s==='revisar'
+      ?`<button class="btn-gen${genDone?' ok':''}" id="btn-gen" onclick="${genDone?'resetGerador()':'gerarContrato()'}">${genDone?'✓ Novo contrato':'📄 Gerar contrato .docx'}</button>`
+      :`<button class="btn-next" ${canNext()?'':'disabled'} onclick="if(${canNext()?'true':'false'}){step++;renderAll()}">${s==='tipo'?'Começar →':'Próximo →'}</button>`}
+  </div>`;
+
+  const TIPOS=[
+    {id:'1loc_com',label:'1 Locatário + Fiador',desc:'Um locatário com garantia de fiança',icon:'👤🛡️'},
+    {id:'1loc_sem',label:'1 Locatário, sem Fiador',desc:'Um locatário sem garantia',icon:'👤'},
+    {id:'2loc_com',label:'2 Locatários + Fiador',desc:'Dois locatários com fiança',icon:'👥🛡️'},
+    {id:'2loc_sem',label:'2 Locatários, sem Fiador',desc:'Dois locatários sem garantia',icon:'👥'},
+  ];
+
+  let html='';
+
+  if(s==='tipo'){
+    html=`<div class="step-title">Tipo de contrato</div>
+    <div class="step-desc">Selecione o modelo adequado à locação</div>
+    <div class="tipo-grid">${TIPOS.map(t=>`
+      <div class="tipo-card${F.tipo===t.id?' sel':''}" onclick="F.tipo='${t.id}';renderStep()">
+        <div class="tipo-icon">${t.icon}</div>
+        <div class="tipo-label">${t.label}</div>
+        <div class="tipo-desc">${t.desc}</div>
+      </div>`).join('')}</div>`;
+  }
+  else if(s==='contrato'){
+    html=`<div class="step-title">Dados do contrato</div>
+    <div class="step-desc">Número, local e data de assinatura</div>
+    <div class="form-grid">
+      ${fld('numero','Nº do contrato *','Ex: 250422-01')}
+      ${fld('cidade','Cidade *','Ananindeua')}
+    </div>
+    <div class="lbl" style="margin:14px 0 6px">Data de assinatura *</div>
+    <div style="display:flex;gap:12px">
+      <div class="field" style="flex:1"><div class="lbl">Dia</div><input type="number" min="1" max="31" value="${F.diaA}" placeholder="Dia" oninput="F.diaA=this.value;renderStep()"></div>
+      <div class="field" style="flex:2"><div class="lbl">Mês</div>${sel('mesA',MESES)}</div>
+      <div class="field" style="flex:1"><div class="lbl">Ano</div><input type="number" value="${F.anoA}" placeholder="2025" oninput="F.anoA=this.value;renderStep()"></div>
+    </div>`;
+  }
+  else if(s==='locador'){
+    html=`<div class="step-title">Dados do locador</div>
+    <div class="step-desc">Proprietário do imóvel</div>
+    <div class="form-grid">
+      ${fld('nL','Nome completo *','Nome completo','text',true)}
+      ${fld('natL','Nacionalidade','brasileiro(a)')}
+      ${fld('ecL','Estado civil','casado(a), solteiro(a)...')}
+      ${fld('profL','Profissão','Ex: aposentado(a)')}
+      ${fld('rgL','RG *','Ex: 5928052 PC/PA')}
+      ${fld('cpfL','CPF *','000.000.000-00')}
+    </div>`;
+  }
+  else if(s==='locatario'){
+    html=`<div class="step-title">Locatário${h2()?'s':''}${hF()?' e fiador':''}</div>
+    <div class="step-desc">Dados de quem vai residir${hF()?' e do fiador':''}</div>
+    ${secLbl('Locatário'+(h2()?' 1':''))}
+    <div class="form-grid">
+      ${fld('nT1','Nome completo *','Nome completo','text',true)}
+      ${fld('natT1','Nacionalidade','brasileiro(a)')}
+      ${fld('ecT1','Estado civil','casado(a)...')}
+      ${fld('profT1','Profissão','Ex: Técnica de Enfermagem')}
+      ${fld('rgT1','RG *','Ex: 7641646 PC/PA')}
+      ${fld('cpfT1','CPF *','000.000.000-00')}
+    </div>
+    ${h2()?`${secLbl('Locatário 2')}
+    <div class="form-grid">
+      ${fld('nT2','Nome completo *','Nome completo','text',true)}
+      ${fld('natT2','Nacionalidade','brasileiro(a)')}
+      ${fld('ecT2','Estado civil','casado(a)...')}
+      ${fld('profT2','Profissão','Ex: Auxiliar de Segurança')}
+      ${fld('rgT2','RG *','Ex: 6317215 SSP/PA')}
+      ${fld('cpfT2','CPF *','000.000.000-00')}
+    </div>`:''}
+    ${hF()?`${secLbl('Fiador(a)')}
+    <div class="form-grid">
+      ${fld('nF','Nome completo *','Nome completo','text',true)}
+      ${fld('natF','Nacionalidade','brasileiro(a)')}
+      ${fld('profF','Profissão','Ex: Faturista')}
+      ${fld('rgF','RG','Ex: 1502433 SSP/PA')}
+      ${fld('cpfF','CPF *','000.000.000-00')}
+      ${fld('emailF','E-mail','email@exemplo.com','email')}
+    </div>`:''}`;
+  }
+  else if(s==='imovel'){
+    html=`<div class="step-title">Dados do imóvel</div>
+    <div class="step-desc">Endereço e tipo do imóvel locado</div>
+    <div class="form-grid">
+      <div class="field"><div class="lbl">Tipo de imóvel</div>${sel('tipoImovel',['RESIDENCIAL','COMERCIAL'])}</div>
+      ${fld('endI','Endereço completo *','Ex: Tv. WE 42, Casa 132-B, Conj. Cidade Nova 4','text',true)}
+      ${fld('bairroI','Bairro','Ex: Coqueiro')}
+      ${fld('cidI','Cidade','Ananindeua')}
+      ${fld('estI','Estado','PA')}
+    </div>`;
+  }
+  else if(s==='financeiro'){
+    const dias=Array.from({length:31},(_,i)=>({v:String(i+1),l:String(i+1)}));
+    const prazos=[6,12,18,24,30,36].map(m=>({v:String(m),l:m+' meses'}));
+    html=`<div class="step-title">Valores e prazo</div>
+    <div class="step-desc">Aluguel, vencimento e vigência do contrato</div>
+    ${secLbl('Aluguel')}
+    <div class="form-grid">
+      <div class="field"><div class="lbl">Valor mensal (R$) *</div><input type="text" value="${F.valor}" placeholder="750,00" oninput="F.valor=this.value;renderStep()"><div class="extenso">${valorExtenso(F.valor)}</div></div>
+      <div class="field"><div class="lbl">Desconto pontualidade (R$)</div><input type="text" value="${F.desconto}" placeholder="50,00" oninput="F.desconto=this.value;renderStep()"><div class="extenso">${valorExtenso(F.desconto)}</div></div>
+      <div class="field full"><div class="lbl">Dia de vencimento *</div>${sel('diaVenc',dias)}</div>
+    </div>
+    ${secLbl('Vigência')}
+    <div class="form-grid">
+      <div class="field"><div class="lbl">Prazo *</div>${sel('prazo',prazos,'calcFim();')}</div>
+    </div>
+    <div class="lbl" style="margin:12px 0 6px">Data de início *</div>
+    <div style="display:flex;gap:12px">
+      <div class="field" style="flex:1"><div class="lbl">Dia</div><input type="number" min="1" max="31" value="${F.diaIni}" placeholder="Dia" oninput="F.diaIni=this.value;calcFim();renderStep()"></div>
+      <div class="field" style="flex:2"><div class="lbl">Mês</div>${sel('mesIni',MESES,'calcFim();')}</div>
+      <div class="field" style="flex:1"><div class="lbl">Ano</div><input type="number" value="${F.anoIni}" placeholder="2025" oninput="F.anoIni=this.value;calcFim();renderStep()"></div>
+    </div>
+    ${F.diaFim?`<div class="info-box" style="margin-top:10px">📅 Término calculado: <strong>${F.diaFim} de ${F.mesFim} de ${F.anoFim}</strong></div>`:''}`;
+  }
+  else if(s==='revisar'){
+    const TIPO_LABELS={'1loc_com':'1 Locatário + Fiador','1loc_sem':'1 Locatário, sem Fiador','2loc_com':'2 Locatários + Fiador','2loc_sem':'2 Locatários, sem Fiador'};
+    const end=F.endI+(F.bairroI?`, ${F.bairroI}`:'')+` – ${F.cidI}/${F.estI}`;
+    html=`<div class="step-title">Revisar e gerar</div>
+    <div class="step-desc">Confirme os dados antes de baixar o contrato</div>
+    <div class="review-box">
+      ${rv('Tipo',TIPO_LABELS[F.tipo]||'')}
+      ${rv('Contrato nº',F.numero)}
+      ${rv('Local / data',`${F.cidade}, ${F.diaA} de ${F.mesA} de ${F.anoA}`)}
+      <div class="review-div"></div>
+      ${rv('Locador',F.nL)}${rv('CPF locador',F.cpfL)}
+      <div class="review-div"></div>
+      ${rv('Locatário'+(h2()?' 1':''),F.nT1)}${rv('CPF'+(h2()?' loc. 1':''),F.cpfT1)}
+      ${h2()?rv('Locatário 2',F.nT2)+rv('CPF loc. 2',F.cpfT2):''}
+      ${hF()?'<div class="review-div"></div>'+rv('Fiador(a)',F.nF)+rv('CPF fiador',F.cpfF):''}
+      <div class="review-div"></div>
+      ${rv('Endereço',end)}
+      <div class="review-div"></div>
+      ${rv('Aluguel','R$ '+F.valor+(F.desconto?' (desc. R$ '+F.desconto+')':''))}
+      ${rv('Vencimento','Dia '+F.diaVenc)}
+      ${rv('Prazo',F.prazo+' meses')}
+      ${rv('Início',F.diaIni+'/'+(MESES.indexOf(F.mesIni)+1)+'/'+F.anoIni)}
+      ${F.diaFim?rv('Término',F.diaFim+'/'+(MESES.indexOf(F.mesFim)+1)+'/'+F.anoFim):''}
+    </div>`;
+  }
+
+  card.innerHTML = html + navArea;
+  document.getElementById('gen-err').style.display='none';
+}
+
+function resetGerador(){
+  Object.assign(F,{
+    tipo:'1loc_com',numero:'',cidade:'Ananindeua',diaA:'',mesA:'',anoA:'',
+    nL:'',natL:'',ecL:'',profL:'',rgL:'',cpfL:'',
+    nT1:'',natT1:'',ecT1:'',profT1:'',rgT1:'',cpfT1:'',
+    nT2:'',natT2:'',ecT2:'',profT2:'',rgT2:'',cpfT2:'',
+    nF:'',natF:'',profF:'',rgF:'',cpfF:'',emailF:'',
+    tipoImovel:'RESIDENCIAL',endI:'',bairroI:'',cidI:'Ananindeua',estI:'PA',
+    valor:'',desconto:'',diaVenc:'',prazo:'12',
+    diaIni:'',mesIni:'',anoIni:'',diaFim:'',mesFim:'',anoFim:'',
+  });
+  step=0; genDone=false;
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GERAR CONTRATO
+// ═══════════════════════════════════════════════════════════════
+async function gerarContrato(){
+  const apiKey=getApiKey();
+  if(!apiKey){ document.getElementById('gen-err').style.display='block'; document.getElementById('gen-err').textContent='Configure sua chave de API Anthropic em Configurações antes de gerar contratos.'; return; }
+  const btn=document.getElementById('btn-gen');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>Gerando...';
+  document.getElementById('gen-err').style.display='none';
+  try{
+    const p=buildPayload(); const code=buildCode(p);
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:4096,
+        system:'You are a Node.js runtime. Execute the provided JavaScript code and return ONLY the base64-encoded output. No markdown, no explanation, no prefix. Just the raw base64 string.',
+        messages:[{role:'user',content:'Execute this code and return ONLY the base64 string:\n\n'+code}]
+      })
+    });
+    const data=await res.json();
+    if(data.error) throw new Error(data.error.message||'Erro na API');
+    const b64=(data.content?.find(b=>b.type==='text')?.text||'').trim().replace(/```[\s\S]*?```/g,'').trim();
+    if(!b64||b64.length<200) throw new Error('Resposta inválida. Verifique sua API key e tente novamente.');
+    const filename=`CONTRATO_${p.numero||'LOCACAO'}_${(F.nT1||'').split(' ')[0].toUpperCase()}.docx`;
+    // download
+    const bytes=atob(b64); const arr=new Uint8Array(bytes.length);
+    for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
+    const blob=new Blob([arr],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=filename;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    // histórico
+    const end=F.endI+(F.bairroI?`, ${F.bairroI}`:'')+` – ${F.cidI}/${F.estI}`;
+    addHistorico({tipo:F.tipo,numero:F.numero,nomeLocatario:F.nT1+(h2()?` e ${F.nT2}`:''),endereco:end,valor:F.valor,filename,b64});
+    genDone=true; renderStep();
+    btn.innerHTML='✓ Novo contrato'; btn.classList.add('ok');
+  }catch(e){
+    const errEl=document.getElementById('gen-err');
+    errEl.style.display='block'; errEl.textContent='Erro: '+e.message;
+    btn.disabled=false; btn.innerHTML='📄 Gerar contrato .docx';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BUILD PAYLOAD + CODE
+// ═══════════════════════════════════════════════════════════════
+function buildPayload(){
+  const p={
+    numero:F.numero,cidade:F.cidade,diaA:F.diaA,mesA:F.mesA,anoA:F.anoA,
+    locador:{nome:F.nL.toUpperCase(),qual:[F.natL,F.ecL,F.profL].filter(Boolean).join(', '),rg:F.rgL,cpf:F.cpfL},
+    loc1:{nome:F.nT1.toUpperCase(),qual:[F.natT1,F.ecT1,F.profT1].filter(Boolean).join(', '),rg:F.rgT1,cpf:F.cpfT1},
+    imovel:{tipo:F.tipoImovel,end:(F.endI+(F.bairroI?`, ${F.bairroI}`:'')+`, ${F.cidI}/${F.estI}`).toUpperCase()},
+    valor:F.valor,valorExt:valorExtenso(F.valor),
+    desconto:F.desconto,descontoExt:valorExtenso(F.desconto),
+    diaVenc:F.diaVenc,diaVencExt:diaExt(F.diaVenc),
+    prazo:F.prazo,prazoExt:prazoExt(F.prazo),
+    inicio:`${F.diaIni}/${String(MESES.indexOf(F.mesIni)+1).padStart(2,'0')}/${F.anoIni}`,
+    termino:`${F.diaFim}/${String(MESES.indexOf(F.mesFim)+1).padStart(2,'0')}/${F.anoFim}`,
+    inicioExt:`${F.diaIni} de ${F.mesIni} de ${F.anoIni}`,
+    terminoExt:`${F.diaFim} de ${F.mesFim} de ${F.anoFim}`,
+  };
+  if(h2()) p.loc2={nome:F.nT2.toUpperCase(),qual:[F.natT2,F.ecT2,F.profT2].filter(Boolean).join(', '),rg:F.rgT2,cpf:F.cpfT2};
+  if(hF()) p.fiador={nome:F.nF.toUpperCase(),qual:[F.natF,F.profF].filter(Boolean).join(', '),rg:F.rgF,cpf:F.cpfF,email:F.emailF};
+  return p;
+}
+
+function buildCode(p){
+  const isHF=hF(),is2=h2();
+  const LOCS=is2?'LOCATÁRIOS':'LOCATÁRIO';
+  const loca=is2?'os LOCATÁRIOS':'o LOCATÁRIO';
+  const locaV=is2?'Os LOCATÁRIOS':'O LOCATÁRIO';
+  const nC=isHF?(is2?30:29):(is2?28:27);
+  const l1=p.loc1,l2=p.loc2,fi=p.fiador;
+  const q1=[l1.qual?l1.qual+',':'',`portador(a) do RG nº. ${l1.rg},`,`inscrito(a) no CPF/MF sob nº ${l1.cpf}`].filter(Boolean).join(' ');
+  const q2=l2?[l2.qual?l2.qual+',':'',`portador(a) do RG nº. ${l2.rg},`,`inscrito(a) no CPF/MF sob nº ${l2.cpf}`].filter(Boolean).join(' '):'';
+  const qF=fi?[fi.qual?fi.qual+',':'',fi.rg?`portador(a) do RG nº. ${fi.rg},`:'',`inscrito(a) no CPF/MF sob nº ${fi.cpf}`,fi.email?`, e-mail ${fi.email}`:''].filter(Boolean).join(' '):'';
+  const locPr=is2?`LOCATÁRIOS: ${l1.nome}, ${q1}, e ${l2.nome}, ${q2}, ambos residentes e domiciliados nesta cidade.`:`LOCATÁRIO (A): ${l1.nome}, ${q1}, residente e domiciliado(a) nesta cidade.`;
+  const fiPr=isHF?`FIADOR (A): ${fi.nome}, ${qF}, residente e domiciliado(a) nesta cidade.`:'';
+  const assinLoc=is2?`...as("LOCATÁRIO (A) 1","${l1.nome}"),\n...as("LOCATÁRIO (A) 2","${l2.nome}"),`:`...as("LOCATÁRIO (A)","${l1.nome}"),`;
+  const assinF=isHF?`...as("FIADOR (A)","${fi.nome}"),`:'';
+  const rL=is2?`lv("LOCATÁRIO 1","${l1.nome}"),lv("LOCATÁRIO 2","${l2.nome}")`:`lv("LOCATÁRIO (A)","${l1.nome}")`;
+  const rF=isHF?`lv("FIADOR (A)","${fi.nome}")`:`lv("GARANTIA","Sem fiador — contrato sem garantia de fiança")`;
+
+  return `const {Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,Header,Footer,AlignmentType,BorderStyle,WidthType,ShadingType,VerticalAlign,PageNumberElement,PageBreak,TabStopType}=require('docx');
+const AE="1B3A5C",AM="2E6DA4",CC="F2F4F7",CB="CCCCCC",BR="FFFFFF",PR="1A1A1A";
+const pts=n=>n*2;
+const sH=t=>new Paragraph({spacing:{before:320,after:100},border:{bottom:{style:BorderStyle.SINGLE,size:6,color:AM,space:4}},children:[new TextRun({text:t.toUpperCase(),bold:true,size:pts(10),font:"Arial",color:AE,characterSpacing:40})]});
+const cT=(n,t)=>new Paragraph({spacing:{before:200,after:60},children:[new TextRun({text:"CLÁUSULA "+n+"  ",bold:true,size:pts(10.5),font:"Arial",color:AM}),t?new TextRun({text:t,bold:true,size:pts(10.5),font:"Arial",color:PR}):new TextRun("")]});
+const bd=(t,o={})=>new Paragraph({alignment:AlignmentType.JUSTIFIED,spacing:{before:0,after:100,line:276},indent:o.indent?{left:480}:{},children:[new TextRun({text:t,size:pts(10.5),font:"Arial",color:PR})]});
+const pg=(n,t)=>new Paragraph({alignment:AlignmentType.JUSTIFIED,spacing:{before:80,after:80,line:276},indent:{left:480},children:[new TextRun({text:n+"  ",bold:true,size:pts(10.5),font:"Arial",color:AM}),new TextRun({text:t,size:pts(10.5),font:"Arial",color:PR})]});
+const sp=(b=80)=>new Paragraph({spacing:{before:b,after:0},children:[new TextRun("")]});
+const lv=(l,v)=>new Paragraph({spacing:{before:40,after:40},children:[new TextRun({text:l+"  ",bold:true,size:pts(9.5),font:"Arial",color:AE}),new TextRun({text:v,size:pts(9.5),font:"Arial",color:PR})]});
+const as=(r,n)=>[new Paragraph({spacing:{before:480,after:0},border:{top:{style:BorderStyle.SINGLE,size:4,color:CB,space:2}},children:[new TextRun({text:r+":  ",bold:true,size:pts(10),font:"Arial",color:AE}),new TextRun({text:n,size:pts(10),font:"Arial",color:PR})]})];
+const tw=()=>{const nn={style:BorderStyle.NONE,size:0,color:BR},tL={top:{style:BorderStyle.SINGLE,size:4,color:CB,space:2},bottom:nn,left:nn,right:nn};const tc=t=>new TableCell({borders:tL,margins:{top:80,bottom:80,left:0,right:0},children:[new Paragraph({spacing:{before:60,after:40},children:[new TextRun({text:t,bold:true,size:pts(9.5),font:"Arial",color:AE})]}),new Paragraph({spacing:{before:0,after:40},children:[new TextRun({text:"Nome: _______________________________",size:pts(9.5),font:"Arial",color:PR})]}),new Paragraph({spacing:{before:0,after:0},children:[new TextRun({text:"RG: _________________________________",size:pts(9.5),font:"Arial",color:PR}})]})]}); return new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[4300,426,4300],rows:[new TableRow({children:[tc("TESTEMUNHA 1"),new TableCell({borders:{top:nn,bottom:nn,left:nn,right:nn},children:[new Paragraph({children:[new TextRun("")]})]}),tc("TESTEMUNHA 2")]})]})};
+const brd={style:BorderStyle.SINGLE,size:4,color:AM},brds={top:brd,bottom:brd,left:brd,right:brd};
+const cell=(ch,bg=CC)=>new TableCell({borders:brds,shading:{fill:bg,type:ShadingType.CLEAR},margins:{top:120,bottom:120,left:160,right:160},children:ch});
+const rsm=()=>new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[4513,4513],rows:[
+  new TableRow({children:[new TableCell({columnSpan:2,borders:brds,shading:{fill:AE,type:ShadingType.CLEAR},margins:{top:120,bottom:120,left:160,right:160},children:[new Paragraph({alignment:AlignmentType.CENTER,children:[new TextRun({text:"RESUMO DO CONTRATO  Nº ${p.numero}",bold:true,size:pts(11),font:"Arial",color:BR})]})]})]  }),
+  new TableRow({children:[cell([lv("LOCADOR (A)","${p.locador.nome}")]),cell([lv("ADMINISTRADORA","KEILA PATRÍCIA MATOS DAS NEVES BARROS – CRECI 3533")])]}),
+  new TableRow({children:[cell([${rL}]),cell([${rF}])]}),
+  new TableRow({children:[cell([lv("ENDEREÇO","${p.imovel.end}")]),cell([lv("FINALIDADE","${p.imovel.tipo}")])]}),
+  new TableRow({children:[cell([lv("ALUGUEL","R$ ${p.valor} mensais${p.desconto?' (desc. R$ '+p.desconto+')':""}"),lv("VENCIMENTO","Todo dia ${p.diaVenc}")]),cell([lv("PRAZO","${p.prazo} meses"),lv("INÍCIO","${p.inicio}"),lv("TÉRMINO","${p.termino}")])]})
+]});
+const hdr=new Header({children:[new Table({width:{size:9026,type:WidthType.DXA},columnWidths:[6500,2526],rows:[new TableRow({children:[new TableCell({borders:{top:{style:BorderStyle.NONE},bottom:{style:BorderStyle.SINGLE,size:8,color:AM},left:{style:BorderStyle.NONE},right:{style:BorderStyle.NONE}},shading:{fill:AE,type:ShadingType.CLEAR},margins:{top:100,bottom:100,left:160,right:80},children:[new Paragraph({children:[new TextRun({text:"PATRÍCIA NEVES NEGÓCIOS IMOBILIÁRIOS",bold:true,size:pts(11),font:"Arial",color:BR})]}),new Paragraph({spacing:{before:20},children:[new TextRun({text:"CRECI 3533 – 12ª Região  |  contato@patricianevesimoveis.com",size:pts(8.5),font:"Arial",color:"AACDE8"})]})]}),new TableCell({borders:{top:{style:BorderStyle.NONE},bottom:{style:BorderStyle.SINGLE,size:8,color:AM},left:{style:BorderStyle.NONE},right:{style:BorderStyle.NONE}},shading:{fill:AE,type:ShadingType.CLEAR},verticalAlign:VerticalAlign.CENTER,margins:{top:100,bottom:100,left:80,right:160},children:[new Paragraph({alignment:AlignmentType.RIGHT,children:[new TextRun({text:"CONTRATO DE LOCAÇÃO",bold:true,size:pts(9),font:"Arial",color:"AACDE8"})]}),new Paragraph({alignment:AlignmentType.RIGHT,spacing:{before:20},children:[new TextRun({text:"Nº ${p.numero}",size:pts(9),font:"Arial",color:BR})]})]})]})]}),sp(60)]});
+const ftr=new Footer({children:[new Paragraph({border:{top:{style:BorderStyle.SINGLE,size:4,color:CB,space:4}},spacing:{before:80},tabStops:[{type:TabStopType.RIGHT,position:9026}],children:[new TextRun({text:"(91) 98249-9323 / (91) 98816-9072  |  contato@patricianevesimoveis.com",size:pts(8.5),font:"Arial",color:"888888"}),new TextRun({text:"\\tPágina ",size:pts(8.5),font:"Arial",color:"888888"}),new PageNumberElement()]})]});
+const doc=new Document({sections:[{properties:{page:{size:{width:11906,height:16838},margin:{top:1440,right:1080,bottom:1080,left:1080}}},headers:{default:hdr},footers:{default:ftr},children:[
+  new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:120,after:60},children:[new TextRun({text:"CONTRATO DE LOCAÇÃO DE IMÓVEL ${p.imovel.tipo}",bold:true,size:pts(14),font:"Arial",color:AE})]}),
+  new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:0,after:240},children:[new TextRun({text:"${p.cidade}, ${p.diaA} de ${p.mesA} de ${p.anoA}",size:pts(10),font:"Arial",color:"666666",italics:true})]}),
+  rsm(),sp(320),
+  bd("LOCADOR (A): ${p.locador.nome}, ${p.locador.qual?p.locador.qual+', ':""}portador(a) do RG nº. ${p.locador.rg}, e CPF ${p.locador.cpf}, residente e domiciliado(a) nesta cidade."),
+  bd("${locPr}"),
+  ${isHF?`bd("${fiPr}"),`:''}
+  sp(60),bd("Pelo presente instrumento particular de contrato de locação, e na melhor forma de direito, as partes acima qualificadas ajustam e contratam entre si a presente locação, de acordo com os prazos, valores e condições supramencionadas, e com as cláusulas numeradas de 1 a ${nC}, a seguir transcritas, as quais foram lidas, perfeitamente entendidas e aceitas por todos."),
+  sp(60),bd("E, por estarem assim justos e contratados, firmam o presente, feito em 02 (DUAS) vias de igual teor e para um só efeito, que assinam juntamente com duas testemunhas."),sp(200),
+  ...as("LOCADOR (A)","${p.locador.nome}"),
+  ${assinLoc}
+  ${assinF}
+  ...as("CORRETORA","KEILA PATRÍCIA MATOS DAS NEVES BARROS – CRECI 3533"),
+  sp(200),tw(),
+  new Paragraph({children:[new PageBreak()]}),
+  sH("II – Do Objeto, Estado e Prazo"),sp(80),
+  cT("1ª",null),bd("O Locador é senhor e legítimo possuidor do imóvel descrito e caracterizado no item 2 do preâmbulo deste contrato, que pelo presente instrumento loca a${is2?"os":"o"} ${LOCS}, para uso e destinação especificada no item 3."),
+  cT("2ª",null),bd("${locaV} recebe${is2?"m":""} o imóvel designado na cláusula anterior, pronto para o uso a que se destina, conforme termo de vistoria que fica fazendo parte deste contrato, obrigando-se a assim mantê-lo em bom estado de conservação e funcionamento."),
+  pg("Parágrafo Primeiro.","Todos os reparos e consertos de qualquer natureza que o imóvel vier a necessitar para seu perfeito funcionamento deverão ser executados por conta d${is2?"os":"o"} ${LOCS}, excetuando-se os problemas decorrentes de falhas estruturais da construção, que serão de responsabilidade da proprietária e/ou condomínio."),
+  pg("Parágrafo Segundo.","As benfeitorias úteis e voluptuárias realizadas pel${is2?"os":"o"} ${LOCS} não darão direito à indenização ou retenção, nos termos do art. 36 da Lei 8.245/91. As benfeitorias necessárias serão indenizáveis, conforme o art. 35 da Lei 8.245/91, salvo se expressamente autorizadas pelo Locador com renúncia prévia por escrito."),
+  cT("3ª",null),bd("O prazo de vigência deste contrato é de ${p.prazo} (${p.prazoExt}) meses, com início em ${p.inicioExt} e término em ${p.terminoExt}, sendo que na data estipulada para o término ${loca} se obriga${is2?"m":""} a restituir o imóvel em perfeita ordem, devendo ser devolvido no mesmo estado em que foi recebido, conforme o laudo de vistoria de entrada, nos termos do art. 569, II do Código Civil de 2002."),
+  sH("III – Do Aluguel, Pagamento, Reajustes e Encargos"),sp(80),
+  cT("4ª",null),bd("O valor mensal do aluguel é de R$ ${p.valor} (${p.valorExt})${p.desconto?", sendo concedido desconto de R$ "+p.desconto+" ("+p.descontoExt+") para pagamentos até a data de vencimento":""}, devendo ser efetuado todo dia ${p.diaVenc} (${p.diaVencExt}) de cada mês, através de Boleto para a senhora Keila Patrícia Matos das Neves Barros, corretora de imóveis inscrita no CRECI sob nº. 3533."),
+  pg("Parágrafo Único.","O aluguel estipulado nesta cláusula será corrigido e reajustado anualmente pelo Índice Geral de Preços – Mercado (IGP-M)."),
+  cT("5ª",null),bd("Além do aluguel, corre por conta d${is2?"os":"o"} ${LOCS} as taxas de conservação e limpeza pública, recolhimento de lixo, e outras que incidirem sobre o imóvel, especialmente as despesas normais de conservação, manutenção, bem como consumo de água e luz."),
+  sH("IV – Da Finalidade ou Destinação do Imóvel"),sp(80),
+  cT("6ª",null),bd("A finalidade do imóvel é ${p.imovel.tipo.toLowerCase()}, não podendo ser utilizado para outros fins estranhos ao aqui estipulado, sob pena de o Locador pedir a rescisão deste contrato e retomada do imóvel."),
+  sH("V – Das Condições Gerais"),sp(80),
+  cT("7ª",null),bd("${locaV} fica${is2?"m":""} obrigado${is2?"s":""} no curso da locação a satisfazer, às suas expensas, a todas as intimações dos Poderes Públicos a que der${is2?"em":""} causa, sendo que nenhuma intimação do Serviço Sanitário será motivo de abandono do imóvel ou rescisão do contrato, sem que antes seja feita vistoria judicial."),
+  cT("8ª",null),bd("No caso de desapropriação do imóvel, ficará o Locador desobrigado de todas as obrigações deste contrato, ressalvando a${is2?"os":"o"} ${LOCS} tão somente a faculdade de haver do Poder Desapropriante a indenização a que tiver direito."),
+  cT("9ª",null),bd("${locaV}${isHF?" e o FIADOR (A)":""} isenta${is2?"m":""} o Locador de qualquer responsabilidade por danos físicos ou materiais que venha${is2?"m":""} a sofrer em consequência de incêndio ou acidentes que possam ocorrer em qualquer parte do imóvel."),
+  cT("10ª",null),bd("${locaV} não poder${is2?"ão":"á"} sublocar o imóvel no todo ou em parte, nem ceder ou transferir a locação sem o consentimento prévio e por escrito do Locador."),
+  cT("11ª",null),bd("Obriga${is2?"m":""}-se ${loca} a não praticar e proibir a prática dentro dos limites do imóvel de jogos de azar, realizações de leilões, bem como a guarda de armamentos, material explosivo ou corrosivo, drogas tóxicas, atos contrários aos bons costumes, nocivos à saúde, perturbadores da ordem pública e proibidos por lei."),
+  cT("12ª",null),bd("${locaV}, desde já, faculta${is2?"m":""} ao Locador ou a seu representante legal examinar ou vistoriar o imóvel quando entender conveniente, desde que agendado previamente."),
+  pg("Parágrafo Único.","Caso em qualquer vistoria seja constatado que o imóvel sofreu alteração ou modificação no seu estado original, ${loca}${isHF?" e o FIADOR (A)":""} se responsabiliza${is2?"m":""} dentro do prazo de 30 (trinta) dias a realizar o trabalho necessário para que o imóvel volte ao seu estado original."),
+  sH("VI – Das Penalidades"),sp(80),
+  cT("13ª",null),bd("Caso ${loca}${isHF?" e o FIADOR (A)":""} não entregue${is2?"m":""} o imóvel na data prevista no término da presente locação, e enquanto permaneça indevidamente ocupado, o aluguel mensal será corrigido no menor período pela Legislação Vigente na época."),
+  cT("14ª",null),bd("Caso o pagamento não seja efetuado no seu vencimento, o recebimento será feito acrescido de juros de mora de 1% (um por cento) ao mês e multa de 10% (dez por cento) sobre o valor total corrigido."),
+  cT("15ª",null),bd("A simples falta de pagamento nas datas previstas na cláusula 4ª constituirá ${loca} em mora, independentemente de qualquer aviso, podendo o Locador negativar ${loca} no sistema de proteção ao crédito (SPC, SERASA e outros), além de propor de imediato a ação de despejo por falta de pagamento, ficando ${loca} responsável${is2?"is":""} pelas custas processuais e honorários de advogado na base de 20% sobre o valor do débito atualizado."),
+  cT("16ª",null),bd("${locaV}${isHF?" e/ou o FIADOR (A)":""} não poder${is2?"ão":"á"} entregar o imóvel locado antes do prazo contratual sem o pagamento da multa proporcional ao tempo restante do contrato, conforme o art. 4º da Lei 8.245/91."),
+  cT("17ª",null),bd("Os contratantes obrigam-se a respeitar o presente contrato, incorrendo aquele que infringir qualquer de suas cláusulas na multa equivalente a 03 (TRÊS) vezes o valor do aluguel então vigente, ressalvando à parte inocente o direito de considerar rescindida a locação."),
+  pg("Parágrafo Único.","A multa prevista nesta cláusula será sempre paga integralmente, seja qual for o tempo decorrido deste contrato, e é de caráter exclusivamente penal, não constituindo prefixação de perdas e danos."),
+  sH("VII – Das Condições Específicas para a Locação do Imóvel"),sp(80),
+  cT("18ª",null),bd("A devolução das chaves será precedida de vistoria com o imóvel desocupado, sendo constatados eventuais estragos e/ou necessidade de reposição do imóvel em seu estado original, cujos custos são de responsabilidade d${is2?"os":"o"} ${LOCS}${isHF?" e do FIADOR (A)":""}, inclusive o pagamento do aluguel durante o período em que o imóvel estiver sendo reparado."),
+  cT("19ª",null),bd("Constatando estragos no imóvel, incluindo benfeitorias ou modificações não autorizadas, deverão ser reparados pel${is2?"os":"o"} ${LOCS}${isHF?" e/ou pelo FIADOR (A)":""}, incluindo pintura interna e externa, instalação elétrica e hidráulica, pisos, muros, telhados, aparelhos sanitários, vidraças, torneiras, pias, ralos e todos os acessórios."),
+  pg("Parágrafo Único.","Caso ${loca} entregue${is2?"m":""} o imóvel danificado, deverão efetuar os serviços de reparo, correndo as despesas por suas responsabilidades, inclusive o aluguel do imóvel no período em que estiver sendo reparado."),
+  cT("20ª",null),bd("Durante o período em que o imóvel estiver sendo reparado, o aluguel e encargos correm por conta d${is2?"os":"o"} ${LOCS}${isHF?" e/ou do FIADOR (A)":""} e deverão ser pagos em seus vencimentos normais, até a nova vistoria e assinatura do recibo de entrega das chaves."),
+  ${isHF?`sH("VIII – Das Garantias de Fiança, Obrigações e Deveres do Fiador (A)"),sp(80),
+  cT("21ª",null),bd("Assina também o presente contrato, sendo solidariamente responsável com ${loca}, o FIADOR (A) ${fi.nome}, ${qF?qF+",":""} residente e domiciliado(a) nesta cidade, independentemente de qualquer preferência e precedência, o qual concorda e aceita todas as obrigações neste contrato expressas e inerentes."),
+  bd("– Que não será obrigado ao Locador dar prévio conhecimento ao FIADOR (A) de eventual propositura da ação de despejo.",{indent:true}),
+  bd("– Que desiste do direito de excussão ou exoneração previstos nos artigos 827 e 835 do Código Civil de 2002, bem como os estipulados no artigo 838 do mesmo diploma legal.",{indent:true}),
+  bd("– Que não lhe assistirá, em execução, por força de solidariedade que assume, o benefício de ordem.",{indent:true}),
+  pg("Parágrafo Primeiro.","No caso de morte, falência ou insolvência do FIADOR (A), ou mudança de domicílio do mesmo, ${loca} se obriga${is2?"m":""}, dentro de 30 (trinta) dias, a dar substituto idôneo, a juízo do Locador."),
+  pg("Parágrafo Segundo.","O FIADOR (A) responde por todas as cláusulas deste contrato, podendo qualquer débito oriundo desta locação ser cobrado do FIADOR (A), a critério exclusivo do Locador."),
+  pg("Parágrafo Terceiro.","A presente fiança é ampla e ilimitada, respondendo o FIADOR (A) por todo e qualquer prejuízo que ${loca} der${is2?"em":""} causa, compreendendo dívida principal, juros, custos processuais, honorários advocatícios, multas contratuais, bem como danos causados ao imóvel e seus acessórios."),
+  pg("Parágrafo Quarto.","O FIADOR (A) poderá a qualquer tempo fazer a entrega das chaves do imóvel, ou rescindir o contrato de locação, quando do não cumprimento por parte d${is2?"os":"o"} ${LOCS} de qualquer das partes deste contrato, sem que esta faculdade o exima da responsabilidade da fiança."),`:''}
+  sH("${isHF?"IX":"VIII"} – Das Disposições Finais"),sp(80),
+  cT("${isHF?"22":"21"}ª",null),bd("Em caso de abandono do imóvel pel${is2?"os":"o"} ${LOCS}, e estando em mora com os aluguéis e encargos, o Locador providenciará notificação extrajudicial a${is2?"os":"o"} ${LOCS}${isHF?" e ao FIADOR (A)":""}. Não havendo manifestação no prazo de 10 (dez) dias, o Locador poderá requerer judicialmente a reintegração de posse."),
+  cT("${isHF?"23":"22"}ª",null),bd("Sendo o imóvel objeto deste contrato apartamento, conjunto comercial, ou qualquer outro tipo de imóvel condominial que possua regulamento próprio, ${loca} se obriga${is2?"m":""} a respeitá-lo como se aqui transcrito fosse."),
+  cT("${isHF?"24":"23"}ª",null),bd("Caso ${loca} deseje${is2?"m":""} fazer novo contrato, após o término deste, dever${is2?"ão":"á"} enviar uma carta avisando ao Locador com antecedência de no mínimo 30 (trinta) dias do término."),
+  cT("${isHF?"25":"24"}ª",null),bd("Tudo quanto for devido em razão deste contrato e não comportar processo executivo será cobrado pela ação judicial competente, ficando sob a responsabilidade do devedor os pagamentos dos honorários advocatícios que o credor constituir."),
+  cT("${isHF?"26":"25"}ª",null),bd("Se na vigência deste contrato a Locadora admitir em benefício d${is2?"os":"o"} ${LOCS} qualquer demora no pagamento do aluguel e demais encargos, essa tolerância não poderá ser considerada como modificação do contrato, nem dará ensejo à novação prevista no art. 360 do Código Civil de 2002${isHF?", por parte do FIADOR (A)":""}."),
+  ${is2&&isHF?`cT("27ª",null),bd("Os LOCATÁRIOS outorgam mútua e reciprocamente poderes ao FIADOR (A), para responder por todas as cláusulas e condições deste contrato, podendo fazer pagamentos, acordos, rescisão, entrega do imóvel, assinar vistorias, bem como poderes para receber citação, notificação ou intimação."),`:''}
+  cT("${nC-1}ª",null),bd("${is2?`Os LOCATÁRIOS${isHF?" e o FIADOR (A)":""} responsabilizam-se`:`O LOCATÁRIO${isHF?" e o FIADOR (A)":""} responsabiliza-se`} civil e criminalmente pela autenticidade das assinaturas apostas neste contrato."),
+  cT("${nC}ª","DO DIREITO DE PREFERÊNCIA"),bd("Na hipótese de o Locador desejar vender, prometer vender, ceder ou prometer ceder direitos de aquisição sobre o imóvel objeto desta locação, fica o Locador obrigado a dar conhecimento do negócio a${is2?"os":"o"} ${LOCS}, mediante notificação extrajudicial, indicando o preço, as condições de pagamento e demais características essenciais do negócio. ${locaV} ter${is2?"ão":"á"} o prazo de 30 (trinta) dias para exercer seu direito de preferência na aquisição do imóvel, nos termos do art. 27 da Lei 8.245/91."),
+  sp(160),
+  new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:120,after:120},shading:{fill:CC,type:ShadingType.CLEAR},border:{top:{style:BorderStyle.SINGLE,size:4,color:CB},bottom:{style:BorderStyle.SINGLE,size:4,color:CB},left:{style:BorderStyle.SINGLE,size:4,color:CB},right:{style:BorderStyle.SINGLE,size:4,color:CB}},children:[new TextRun({text:"Declaramos ter lido, entendido e concordado com todas as cláusulas deste contrato.",italics:true,size:pts(10),font:"Arial",color:PR})]}),
+  new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:120,after:200},children:[new TextRun({text:"${p.cidade}, ${p.diaA} de ${p.mesA} de ${p.anoA}",size:pts(10),font:"Arial",color:"666666"})]}),
+  ...as("LOCADOR (A)","${p.locador.nome}"),
+  ${assinLoc}
+  ${assinF}
+  ...as("CORRETORA","KEILA PATRÍCIA MATOS DAS NEVES BARROS – CRECI 3533"),
+  sp(240),tw(),
+]}]});
+Packer.toBuffer(doc).then(buf=>process.stdout.write(buf.toString('base64')));`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+function initApp(){
+  checkApiNotice();
+  renderAll();
+  // pre-fill api key display hint
+  const k=getApiKey();
+  if(k) document.getElementById('inp-apikey').placeholder='(chave já salva — cole aqui para alterar)';
+}
+
+// Auto-login se já autenticado nesta sessão
+checkAuth();
+</script>
+</body>
+</html>
